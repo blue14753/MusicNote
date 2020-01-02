@@ -21,7 +21,7 @@ var musics = map[string]pb.MusicInfo{
 	},
 }
 
-//ReturnType: Default 0, In list 1, Not in list 2, list the list 3
+//ReturnType: Default 0, In list 1, Not in list 2, list the list 3, save the list 4, stop server 5, error 6
 var album = &pb.MusicResponse{
 	MusicList: []*pb.MusicInfo{&pb.MusicInfo{
 		MusicName: "lily",
@@ -34,10 +34,22 @@ var album = &pb.MusicResponse{
 type Server struct {
 }
 
+func Find(s []string, substr string) (int, bool) {
+	for i, v := range s {
+		if substr == v {
+			return i, true
+		}
+	}
+	return -1, false
+
+}
+
 // 之前提到Go只要有完成interface的方法, 就等於繼承了該接口
 // GetUserInfo(context.Context, *UserRequest) (*UserResponse, error)
 
 func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error) {
+	commands := []string{"list", "save", "exit"}
+
 	for {
 
 		in, err := srv.Recv()
@@ -50,11 +62,25 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 			return err
 		}
 
+		if strings.HasPrefix(in.MusicName, ";;") {
+			_, found := Find(commands, strings.TrimLeft(in.MusicName, ";;"))
+			if !found {
+				album.ReturnType = 6
+				album.ReturnMessage = "The command " + in.MusicName + " is not exsited."
+				srv.Send(album)
+				continue
+			}
+		}
+
 		switch in.MusicName {
 		case ";;exit":
-			return nil
+			album.ReturnType = 5
+			album.ReturnMessage = "music client leave."
+			srv.Send(album)
+			break
 		case ";;list":
 			album.ReturnType = 3
+			album.ReturnMessage = "Music in Album:"
 			srv.Send(album)
 		case ";;save":
 			var saveList []string
@@ -66,6 +92,9 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 			if err != nil {
 				log.Printf("fail to save: %v", err)
 			}
+			album.ReturnType = 4
+			album.ReturnMessage = "The musicList has saved."
+			srv.Send(album)
 		default:
 			if _, ok := musics[in.MusicName]; !ok {
 				musics[in.MusicName] = pb.MusicInfo{
@@ -76,14 +105,17 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 				music := musics[in.MusicName]
 				album.MusicList = append(album.MusicList, &music)
 				album.ReturnType = 2
+				album.ReturnMessage = "The music " + in.MusicName + " has add to album."
 				srv.Send(album)
 			} else {
 				album.ReturnType = 1
+				album.ReturnMessage = "The music  " + in.MusicName + " has in album."
 				srv.Send(album)
 			}
 		}
 
 	}
+	return nil
 }
 
 func main() {

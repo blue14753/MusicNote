@@ -24,4 +24,5 @@ message MusicInfo {
 message MusicResponse {
     repeated MusicInfo musicList =1;
     int32 returnType = 2;
+    string returnMessage =3;
 }

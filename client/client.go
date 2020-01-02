@@ -31,10 +31,6 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 		}
 		nameInput = strings.TrimRight(nameInput, "\n")
 
-		if nameInput == ";;exit" {
-			break
-		}
-
 		stream.Send(&pb.MusicInfo{MusicName: nameInput})
 		if err != nil {
 			log.Printf("failed to send: %v", err)
@@ -46,18 +42,18 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 			log.Printf("fail to recv: %v", err)
 			break
 		}
-
-		if reply.ReturnType == 1 {
-			fmt.Println("The music  " + nameInput + " has in album.")
-		} else if reply.ReturnType == 2 {
-			fmt.Println("The music " + nameInput + " has add to album.")
-		} else if reply.ReturnType == 3 {
-			fmt.Println("Music in Album:")
+		switch reply.ReturnType {
+		case 1, 2, 4, 6:
+			fmt.Println(reply.ReturnMessage)
+		case 3:
+			fmt.Println(reply.ReturnMessage)
 			for _, music := range reply.MusicList {
 				fmt.Println(music.MusicName)
 			}
+		case 5:
+			fmt.Println(reply.ReturnMessage)
+			return
 		}
-
 		//fmt.Printf("reply : %v\n", reply.MusicList)
 	}
 
