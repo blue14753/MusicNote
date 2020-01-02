@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	pb "gRPC_stream/pb"
+	"gRPC_stream/server/youtube"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"strings"
-
-	pb "gRPC_stream/pb"
 
 	"google.golang.org/grpc"
 )
@@ -93,14 +93,15 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 				log.Printf("fail to save: %v", err)
 			}
 			album.ReturnType = 4
-			album.ReturnMessage = "The musicList has saved."
+			album.ReturnMessage = "The musicList is saved."
 			srv.Send(album)
 		default:
 			if _, ok := musics[in.MusicName]; !ok {
+				id, name := youtube.SearchVideo(in.MusicName, 1)
 				musics[in.MusicName] = pb.MusicInfo{
-					MusicName: in.MusicName,
+					MusicName: name,
 					MusicType: "foreign",
-					MusicUrl:  "https://www.youtube.com/results?search_query=" + in.MusicName,
+					MusicUrl:  "https://www.youtube.com/watch?v=" + id,
 				}
 				music := musics[in.MusicName]
 				album.MusicList = append(album.MusicList, &music)
@@ -115,10 +116,10 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		}
 
 	}
-	return nil
 }
 
 func main() {
+
 	// 建構一個gRPC服務端實例
 	grpcServer := grpc.NewServer()
 

@@ -48,7 +48,7 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 		case 3:
 			fmt.Println(reply.ReturnMessage)
 			for _, music := range reply.MusicList {
-				fmt.Println(music.MusicName)
+				fmt.Println(music.MusicName + " " + music.MusicUrl)
 			}
 		case 5:
 			fmt.Println(reply.ReturnMessage)
