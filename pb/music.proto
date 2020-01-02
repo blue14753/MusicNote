@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// Unary RPC : 客戶端發出一個請求到服務端, 服務端就回應一次
+package grpc.stream;
+
+// 定義 MusicService 服務
+service MusicService {
+    // RPC方法, 透過UserID 取得用戶資料, 並返回UserName、Age
+    rpc GetMusicInfo(stream MusicInfo)returns(stream MusicResponse);
+}
+
+
+
+// 客戶端請求的格式
+
+
+message MusicInfo {
+    string musicName =1;
+    string musicType =2;
+    string musicUrl =3;
+}
+
+// 服務端返回的格式
+message MusicResponse {
+    repeated MusicInfo musicList =1;
+    int32 returnType = 2;
+}
