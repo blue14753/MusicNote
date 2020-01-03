@@ -42,6 +42,7 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 			log.Printf("fail to recv: %v", err)
 			break
 		}
+
 		switch reply.ReturnType {
 		case 1, 2, 4, 6:
 			fmt.Println(reply.ReturnMessage)
