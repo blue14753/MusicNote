@@ -66,7 +66,6 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 			fmt.Println(reply.ReturnMessage)
 			return
 		}
-		//fmt.Printf("reply : %v\n", reply.MusicList)
 	}
 
 }

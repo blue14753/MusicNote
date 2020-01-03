@@ -13,14 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var musics = map[string]pb.MusicInfo{
-	"default": {
-		MusicName: "MusicName",
-		MusicType: "MusicType",
-		MusicUrl:  "https://www.youtube.com/results?search_query=MusicUrl",
-	},
-}
-
 const (
 	Default int32 = iota
 	InList
@@ -31,18 +23,6 @@ const (
 	Error
 	ClearList
 )
-
-//ReturnType: Default 0, In list 1, Not in list 2, list the list 3, save the list 4, stop server 5, error 6
-/*
-var album = &pb.MusicResponse{
-	MusicList: []*pb.MusicInfo{&pb.MusicInfo{
-		MusicName: "MusicName",
-		MusicType: "MusicType",
-		MusicUrl:  "https://www.youtube.com/results?search_query=default",
-	}},
-	ReturnType:    0,
-	ReturnMessage: "default",
-}*/
 
 type Server struct {
 }
@@ -57,8 +37,16 @@ func Find(s []string, substr string) (int, bool) {
 
 }
 
-func readMusicList() *pb.MusicResponse {
+func readMusicList() (*pb.MusicResponse, map[string]pb.MusicInfo) {
 	var musicList []*pb.MusicInfo
+	var musics = map[string]pb.MusicInfo{
+		"default": {
+			MusicName: "MusicName",
+			MusicType: "MusicType",
+			MusicUrl:  "https://www.youtube.com/results?search_query=MusicUrl",
+		},
+	}
+
 	readFile, err := ioutil.ReadFile("musicList.txt")
 	if err != nil {
 		log.Printf("fail to read file: %v", err)
@@ -84,7 +72,7 @@ func readMusicList() *pb.MusicResponse {
 		ReturnMessage: "",
 	}
 
-	return &musicResponse
+	return &musicResponse, musics
 
 }
 
@@ -129,7 +117,8 @@ func setDefaultMusicList(album *pb.MusicResponse, musics map[string]pb.MusicInfo
 
 func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error) {
 	commands := []string{"list", "save", "exit", "clear"}
-	album := readMusicList()
+
+	album, musics := readMusicList()
 
 	for {
 
@@ -157,6 +146,7 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		case ";;exit":
 			album.ReturnType = StopServer
 			album.ReturnMessage = "music client leave."
+			saveMusicList(album.MusicList)
 			srv.Send(album)
 			return err
 		case ";;list":
@@ -195,8 +185,6 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		}
 
 	}
-	defer saveMusicList(album.MusicList)
-	return err
 }
 
 func main() {
