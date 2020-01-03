@@ -29,6 +29,7 @@ const (
 	SaveList
 	StopServer
 	Error
+	ClearList
 )
 
 //ReturnType: Default 0, In list 1, Not in list 2, list the list 3, save the list 4, stop server 5, error 6
@@ -99,11 +100,35 @@ func saveMusicList(musicList []*pb.MusicInfo) {
 	}
 }
 
+func setDefaultMusicList(album *pb.MusicResponse, musics map[string]pb.MusicInfo) (*pb.MusicResponse, map[string]pb.MusicInfo) {
+	musicDefault := &pb.MusicInfo{
+		MusicName: "MusicName",
+		MusicType: "MusicType",
+		MusicUrl:  "https://www.youtube.com/results?search_query=MusicUrl",
+	}
+	musics = map[string]pb.MusicInfo{
+		"default": {
+			MusicName: musicDefault.MusicName,
+			MusicType: musicDefault.MusicType,
+			MusicUrl:  musicDefault.MusicUrl,
+		},
+	}
+	var musicList []*pb.MusicInfo
+	musicList = append(musicList, musicDefault)
+
+	album = &pb.MusicResponse{
+		MusicList:     musicList,
+		ReturnType:    Default,
+		ReturnMessage: "",
+	}
+	return album, musics
+}
+
 // 之前提到Go只要有完成interface的方法, 就等於繼承了該接口
 // GetUserInfo(context.Context, *UserRequest) (*UserResponse, error)
 
 func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error) {
-	commands := []string{"list", "save", "exit"}
+	commands := []string{"list", "save", "exit", "clear"}
 	album := readMusicList()
 
 	for {
@@ -143,6 +168,12 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 			album.ReturnType = SaveList
 			album.ReturnMessage = "The musicList is saved."
 			srv.Send(album)
+		case ";;clear":
+			album, musics = setDefaultMusicList(album, musics)
+			album.ReturnType = ClearList
+			album.ReturnMessage = "The musicList is cleared."
+			srv.Send(album)
+
 		default:
 			id, name := youtube.SearchVideo(in.MusicName, 1)
 			if _, ok := musics[name]; !ok {
