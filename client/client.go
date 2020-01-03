@@ -13,6 +13,16 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	Default int32 = iota
+	InList
+	NotInList
+	ListList
+	SaveList
+	StopServer
+	Error
+)
+
 func GetMusicInfo(c pb.MusicServiceClient) {
 	var err error
 	stream, err := c.GetMusicInfo(context.Background())
@@ -44,14 +54,14 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 		}
 
 		switch reply.ReturnType {
-		case 1, 2, 4, 6:
+		case InList, NotInList, SaveList, Error:
 			fmt.Println(reply.ReturnMessage)
-		case 3:
+		case ListList:
 			fmt.Println(reply.ReturnMessage)
 			for _, music := range reply.MusicList {
 				fmt.Println(music.MusicName + " " + music.MusicUrl)
 			}
-		case 5:
+		case StopServer:
 			fmt.Println(reply.ReturnMessage)
 			return
 		}

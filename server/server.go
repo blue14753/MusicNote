@@ -21,6 +21,16 @@ var musics = map[string]pb.MusicInfo{
 	},
 }
 
+const (
+	Default int32 = iota
+	InList
+	NotInList
+	ListList
+	SaveList
+	StopServer
+	Error
+)
+
 //ReturnType: Default 0, In list 1, Not in list 2, list the list 3, save the list 4, stop server 5, error 6
 /*
 var album = &pb.MusicResponse{
@@ -69,7 +79,7 @@ func readMusicList() *pb.MusicResponse {
 	}
 	musicResponse := pb.MusicResponse{
 		MusicList:     musicList,
-		ReturnType:    0,
+		ReturnType:    Default,
 		ReturnMessage: "",
 	}
 
@@ -111,7 +121,7 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		if strings.HasPrefix(in.MusicName, ";;") {
 			_, found := Find(commands, strings.TrimLeft(in.MusicName, ";;"))
 			if !found {
-				album.ReturnType = 6
+				album.ReturnType = Error
 				album.ReturnMessage = "The command " + in.MusicName + " is not exsited."
 				srv.Send(album)
 				continue
@@ -120,17 +130,17 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 
 		switch in.MusicName {
 		case ";;exit":
-			album.ReturnType = 5
+			album.ReturnType = StopServer
 			album.ReturnMessage = "music client leave."
 			srv.Send(album)
 			return err
 		case ";;list":
-			album.ReturnType = 3
+			album.ReturnType = ListList
 			album.ReturnMessage = "Music in Album:"
 			srv.Send(album)
 		case ";;save":
 			saveMusicList(album.MusicList)
-			album.ReturnType = 4
+			album.ReturnType = SaveList
 			album.ReturnMessage = "The musicList is saved."
 			srv.Send(album)
 		default:
@@ -143,11 +153,11 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 				}
 				music := musics[name]
 				album.MusicList = append(album.MusicList, &music)
-				album.ReturnType = 2
-				album.ReturnMessage = "The music " + name + " has add to album."
+				album.ReturnType = NotInList
+				album.ReturnMessage = "The music " + name + " is add to album."
 				srv.Send(album)
 			} else {
-				album.ReturnType = 1
+				album.ReturnType = InList
 				album.ReturnMessage = "The music  " + name + " has in album."
 				srv.Send(album)
 			}
