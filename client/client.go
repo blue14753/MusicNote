@@ -22,6 +22,8 @@ const (
 	StopServer
 	Error
 	ClearList
+	HelpCommands
+	RemoveMusic
 )
 
 func GetMusicInfo(c pb.MusicServiceClient) {
@@ -55,7 +57,7 @@ func GetMusicInfo(c pb.MusicServiceClient) {
 		}
 
 		switch reply.ReturnType {
-		case InList, NotInList, SaveList, Error, ClearList:
+		case InList, NotInList, SaveList, Error, ClearList, HelpCommands:
 			fmt.Println(reply.ReturnMessage)
 		case ListList:
 			fmt.Println(reply.ReturnMessage)

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
 
 	"google.golang.org/grpc"
 )
@@ -22,12 +23,15 @@ const (
 	StopServer
 	Error
 	ClearList
+	HelpCommands
+	RemoveMusic
 )
 
 type Server struct {
+	lock sync.Mutex
 }
 
-func Find(s []string, substr string) (int, bool) {
+func FindSubString(s []string, substr string) (int, bool) {
 	for i, v := range s {
 		if substr == v {
 			return i, true
@@ -51,9 +55,8 @@ func readMusicList() (*pb.MusicResponse, map[string]pb.MusicInfo) {
 	if err != nil {
 		log.Printf("fail to read file: %v", err)
 	}
-	rFile := string(readFile)
 
-	rFileLine := strings.Split(rFile, "\n")
+	rFileLine := strings.Split(string(readFile), "\n")
 	for _, rFileSpace := range rFileLine {
 		if rFileSpace != "" {
 			name := strings.TrimRight(strings.Split(rFileSpace, "https")[0], " ")
@@ -112,11 +115,20 @@ func setDefaultMusicList(album *pb.MusicResponse, musics map[string]pb.MusicInfo
 	return album, musics
 }
 
+/*
+func removeMusic(album *pb.MusicResponse,musics map[string]pb.MusicInfo,s string)(*pb.MusicResponse,map[string]pb.MusicInfo){
+	delete(musics,s)
+	album.MusicList
+
+
+	return
+}*/
+
 // 之前提到Go只要有完成interface的方法, 就等於繼承了該接口
 // GetUserInfo(context.Context, *UserRequest) (*UserResponse, error)
 
 func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error) {
-	commands := []string{"list", "save", "exit", "clear"}
+	commands := []string{"list", "save", "exit", "clear", "help", "remove"}
 
 	album, musics := readMusicList()
 
@@ -133,7 +145,7 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		}
 
 		if strings.HasPrefix(in.MusicName, ";;") {
-			_, found := Find(commands, strings.TrimLeft(in.MusicName, ";;"))
+			_, found := FindSubString(commands, strings.TrimLeft(in.MusicName, ";;"))
 			if !found {
 				album.ReturnType = Error
 				album.ReturnMessage = "The command " + in.MusicName + " is not exsited."
@@ -146,7 +158,6 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 		case ";;exit":
 			album.ReturnType = StopServer
 			album.ReturnMessage = "music client leave."
-			saveMusicList(album.MusicList)
 			srv.Send(album)
 			return err
 		case ";;list":
@@ -154,7 +165,10 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 			album.ReturnMessage = "Music in Album:"
 			srv.Send(album)
 		case ";;save":
+			s.lock.Lock()
 			saveMusicList(album.MusicList)
+			s.lock.Unlock()
+
 			album.ReturnType = SaveList
 			album.ReturnMessage = "The musicList is saved."
 			srv.Send(album)
@@ -163,10 +177,17 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 			album.ReturnType = ClearList
 			album.ReturnMessage = "The musicList is cleared."
 			srv.Send(album)
+		case ";;help":
+			album.ReturnType = HelpCommands
+			album.ReturnMessage = strings.Join(commands, ",")
+			srv.Send(album)
+		case ";;remove":
+			continue
 
 		default:
 			id, name := youtube.SearchVideo(in.MusicName, 1)
 			if _, ok := musics[name]; !ok {
+				s.lock.Lock()
 				musics[name] = pb.MusicInfo{
 					MusicName: name,
 					MusicType: "foreign",
@@ -174,6 +195,7 @@ func (s *Server) GetMusicInfo(srv pb.MusicService_GetMusicInfoServer) (err error
 				}
 				music := musics[name]
 				album.MusicList = append(album.MusicList, &music)
+				s.lock.Unlock()
 				album.ReturnType = NotInList
 				album.ReturnMessage = "The music " + name + " is add to album."
 				srv.Send(album)
@@ -191,7 +213,7 @@ func main() {
 
 	// 建構一個gRPC服務端實例
 	grpcServer := grpc.NewServer()
-
+	defer grpcServer.Stop()
 	// 註冊服務
 	pb.RegisterMusicServiceServer(grpcServer, &Server{})
 
@@ -203,4 +225,5 @@ func main() {
 
 	fmt.Println("Server is running.")
 	grpcServer.Serve(listen)
+
 }
